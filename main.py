@@ -18,7 +18,6 @@ class DiscordMessageReader:
         self.channel_index = {}
         self.server_names = {}  # Dict to store {server_id: server_name}
         self.output_format = tk.StringVar(value="Markdown")
-        self.only_export_messages = tk.BooleanVar(value=False)
         self.selected_server_id = tk.StringVar()
         self.selected_channel_id = tk.StringVar()
         self.setup_ui()
@@ -106,15 +105,6 @@ class DiscordMessageReader:
             format_frame, text="CSV", variable=self.output_format, value="CSV"
         )
         csv_radio.grid(row=0, column=2, padx=5, pady=5, sticky="w")
-
-        # Only export messages checkbox
-        checkbox_frame = customtkinter.CTkFrame(self.root_window)
-        checkbox_frame.grid(pady=5, padx=20, sticky="w")
-
-        export_checkbox = customtkinter.CTkCheckBox(
-            checkbox_frame, text="Only Export Messages", variable=self.only_export_messages
-        )
-        export_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
         # Extract button
         self.extract_button = customtkinter.CTkButton(
@@ -273,10 +263,7 @@ class DiscordMessageReader:
 
         # Handle Attachments
         attachments = message.get("Attachments") or message.get("attachments") or ""
-        if attachments and not self.only_export_messages.get():
-            attachments_section = f"- **Attachments:** {attachments}\n"
-        else:
-            attachments_section = ""
+        attachments_section = f"- **Attachments:** {attachments}\n" if attachments else ""
 
         return f"""### Message in {channel_info}
 - **Time:** {timestamp}
@@ -290,9 +277,7 @@ class DiscordMessageReader:
         """
         try:
             with open(output_filename, 'w', newline='', encoding='utf-8') as csvfile:
-                fieldnames = ['Timestamp', 'Content']
-                if not self.only_export_messages.get():
-                    fieldnames.append('Attachments')
+                fieldnames = ['Timestamp', 'Content', 'Attachments']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
@@ -300,10 +285,9 @@ class DiscordMessageReader:
                     row = {
                         'Timestamp': message.get("Timestamp") or message.get("timestamp") or "Unknown Time",
                         'Content': message.get("Contents") or message.get("Content") or message.get(
-                            "content") or "*No content*"
+                            "content") or "*No content*",
+                        'Attachments': message.get("Attachments") or message.get("attachments") or ""
                     }
-                    if not self.only_export_messages.get():
-                        row['Attachments'] = message.get("Attachments") or message.get("attachments") or ""
                     writer.writerow(row)
             print(f"\nSaved messages to: {output_filename}")
             self.status_label.configure(
